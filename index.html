@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZIDDI LINK SHORTENER | CUSTOM</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+    <style>
+        :root {
+            --bg: #0d0f14;
+            --neon: #00ff41;
+            --shadow-dark: #050608;
+            --shadow-light: #1a1e26;
+            --text: #e6edf3;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Consolas', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px;
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        .container {
+            background: var(--bg);
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 10px 10px 20px var(--shadow-dark), -5px -5px 15px var(--shadow-light);
+            width: 100%;
+            max-width: 420px;
+            border: 1px solid #1f242d;
+            box-sizing: border-box;
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        h1 { color: var(--neon); letter-spacing: 1px; font-size: 1.4rem; margin-bottom: 20px; }
+
+        .input-box {
+            width: 100%;
+            padding: 14px;
+            margin: 8px 0;
+            background: #080a0e;
+            border: 1px solid #1f242d;
+            border-radius: 10px;
+            color: var(--neon);
+            outline: none;
+            box-sizing: border-box;
+            box-shadow: inset 4px 4px 8px var(--shadow-dark);
+        }
+
+        .btn-gen {
+            width: 100%;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 10px;
+            background: var(--neon);
+            color: #000;
+            font-weight: 900;
+            border: none;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+
+        /* Generated Link Box */
+        #result-container {
+            margin-top: 25px;
+            display: none;
+            animation: slideUp 0.4s ease;
+        }
+
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .link-output-box {
+            background: #080a0e;
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px dashed var(--neon);
+            box-shadow: 0 0 10px rgba(0,255,65,0.1);
+            position: relative;
+        }
+
+        .short-url-text {
+            color: #fff;
+            font-size: 0.85rem;
+            word-break: break-all;
+            display: block;
+            margin-bottom: 15px;
+            padding: 5px;
+        }
+
+        .copy-btn {
+            background: var(--bg);
+            color: var(--neon);
+            border: 1px solid var(--neon);
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+        }
+
+        .copy-btn:hover { background: var(--neon); color: #000; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Ziddi Link Shortener</h1>
+        
+        <input type="url" id="longUrl" class="input-box" placeholder="Paste your long link here">
+        <input type="text" id="customAlias" class="input-box" placeholder="Custom Name (Optional)">
+        
+        <button class="btn-gen" onclick="createZiddiLink()">ENCRYPT & SHORTEN</button>
+
+        <div id="result-container">
+            <div class="link-output-box">
+                <span id="displayShortUrl" class="short-url-text"></span>
+                <button class="copy-btn" onclick="copyLink()">COPY SHORT LINK</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyCFy28nNtxhkjfpOd0aCfYkjHUwErh1WVQ",
+            authDomain: "movie-1e6fc.firebaseapp.com",
+            projectId: "movie-1e6fc",
+            databaseURL: "https://movie-1e6fc-default-rtdb.firebaseio.com",
+            storageBucket: "movie-1e6fc.firebasestorage.app",
+            messagingSenderId: "371616954594",
+            appId: "1:371616954594:web:977d88ec7570df351246bb"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        async function createZiddiLink() {
+            const longUrl = document.getElementById('longUrl').value;
+            const custom = document.getElementById('customAlias').value.trim();
+            
+            if (!longUrl) return alert("Enter URL first!");
+
+            // Agar custom name diya hai toh wo use karo, warna random
+            const finalId = custom ? custom.replace(/[^a-zA-Z0-9-]/g, "") : Math.random().toString(36).substring(2, 7);
+            
+            try {
+                // Check if custom ID already exists
+                const check = await db.ref('shortLinks/' + finalId).once('value');
+                if (check.exists() && custom) return alert("This custom name is already taken!");
+
+                await db.ref('shortLinks/' + finalId).set({ originalUrl: longUrl });
+
+                const finalLink = window.location.href.split('?')[0] + "?z=" + finalId;
+                document.getElementById('displayShortUrl').innerText = finalLink;
+                document.getElementById('result-container').style.display = 'block';
+            } catch (e) { alert("Firebase Error!"); }
+        }
+
+        function copyLink() {
+            const link = document.getElementById('displayShortUrl').innerText;
+            navigator.clipboard.writeText(link).then(() => alert("Copied!"));
+        }
+
+        // Redirection Logic
+        (function() {
+            const params = new URLSearchParams(window.location.search);
+            const zId = params.get('z');
+            if (zId) {
+                document.body.innerHTML = "<h2 style='color:#00ff41;text-align:center;margin-top:20%;'>ZIDDI HACKS: Redirecting...</h2>";
+                db.ref('shortLinks/' + zId).once('value').then(s => {
+                    if (s.exists()) window.location.replace(s.val().originalUrl);
+                    else alert("Link Invalid!");
+                });
+            }
+        })();
+    </script>
+</body>
+</html>
