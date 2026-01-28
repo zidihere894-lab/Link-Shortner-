@@ -3,70 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ziddi Shortener</title>
+    <title>Ziddi Link Shortener</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
     <style>
         :root { --bg: #0d0f14; --neon: #00ff41; --panel: #161b22; }
-        body { background: var(--bg); color: #fff; font-family: 'Courier New', monospace; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        body { background: var(--bg); color: #fff; font-family: 'Consolas', monospace; display: flex; flex-direction: column; align-items: center; padding: 20px; min-height: 100vh; justify-content: center; margin:0; }
         
         .container { 
-            background: var(--panel); padding: 25px; border-radius: 20px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 100%; max-width: 400px; 
-            border: 1px solid #30363d; text-align: center; margin-top: 30px;
+            background: var(--panel); padding: 30px; border-radius: 25px; 
+            box-shadow: 0 15px 35px rgba(0,0,0,0.7); width: 100%; max-width: 400px; 
+            border: 1px solid #30363d; text-align: center;
         }
 
-        h1 { color: var(--neon); font-size: 1.5rem; text-transform: uppercase; margin-bottom: 20px; }
+        h1 { color: var(--neon); font-size: 1.5rem; text-transform: uppercase; margin-bottom: 10px; }
         
         .input-box { 
-            width: 100%; padding: 14px; margin: 10px 0; background: #000; 
-            border: 1px solid #333; border-radius: 10px; color: var(--neon); 
-            outline: none; box-sizing: border-box; font-size: 14px;
+            width: 100%; padding: 15px; margin: 10px 0; background: #000; 
+            border: 1px solid #333; border-radius: 12px; color: var(--neon); 
+            outline: none; box-sizing: border-box; font-size: 14px; text-align: center;
         }
-
-        .watch-btn {
-            background: #1f242d; color: #888; border: 1px solid #333;
-            padding: 8px 15px; border-radius: 5px; cursor: pointer;
-            font-size: 12px; margin-bottom: 10px; transition: 0.3s;
-        }
-        .watch-btn:hover { border-color: var(--neon); color: var(--neon); }
 
         .btn-gen { 
-            width: 100%; padding: 15px; margin-top: 10px; border-radius: 10px; 
+            width: 100%; padding: 18px; margin-top: 15px; border-radius: 12px; 
             background: var(--neon); color: #000; font-weight: 900; border: none; cursor: pointer; 
+            text-transform: uppercase; box-shadow: 0 0 15px rgba(0,255,65,0.3);
         }
 
         #result-panel { 
-            margin-top: 25px; display: none; background: #080a0e; padding: 15px; 
-            border-radius: 12px; border: 1px dashed var(--neon);
+            margin-top: 30px; display: none; background: #080a0e; padding: 20px; 
+            border-radius: 15px; border: 1px dashed var(--neon);
         }
 
-        .url-display { font-size: 13px; color: #fff; word-break: break-all; display: block; margin-bottom: 15px; }
+        .short-url { font-size: 15px; color: #fff; word-break: break-all; display: block; margin-bottom: 20px; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>Ziddi Shortener</h1>
+        <h1>ZIDDI SHORTENER</h1>
         
-        <input type="url" id="longUrl" class="input-box" placeholder="Paste Your Main Link">
+        <input type="url" id="longUrl" class="input-box" placeholder="PASTE ORIGINAL LINK">
+        <input type="text" id="customName" class="input-box" placeholder="CUSTOM NAME (WatchNow)">
         
-        <button class="watch-btn" onclick="document.getElementById('customName').value='WatchNow'">+ Add WatchNow</button>
-        
-        <input type="text" id="customName" class="input-box" placeholder="Custom Name (Optional)">
-        
-        <button class="btn-gen" id="mainBtn" onclick="createShortLink()">Shorten Now</button>
+        <button class="btn-gen" id="mainBtn" onclick="createLink()">GENERATE CLEAN LINK</button>
 
         <div id="result-panel">
-            <span class="url-display" id="shortUrlOutput"></span>
+            <span class="short-url" id="outputLink"></span>
             <button class="btn-gen" style="background:#fff;" onclick="copyLink()">COPY LINK</button>
         </div>
     </div>
 
     <script>
-        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyCFy28nNtxhkjfpOd0aCfYkjHUwErh1WVQ",
             authDomain: "movie-1e6fc.firebaseapp.com",
@@ -79,41 +69,62 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        async function createShortLink() {
+        async function createLink() {
             const longUrl = document.getElementById('longUrl').value;
             const custom = document.getElementById('customName').value.trim();
-            if (!longUrl) return alert("Link paste karein!");
+            const btn = document.getElementById('mainBtn');
+
+            if (!longUrl) return alert("Link dalo bhai!");
 
             const id = custom ? custom : Math.random().toString(36).substring(2, 7);
             
+            btn.innerText = "SAVING...";
+            btn.disabled = true;
+
             try {
                 await db.ref('links/' + id).set({ original: longUrl });
 
-                // Yahan hum fake link nahi balkay real URL banayenge
-                // Agar aap GitHub par upload karenge toh ye khud theek ho jayegi
-                let currentUrl = window.location.href.split('?')[0];
-                if(currentUrl.startsWith("file:///")) {
-                    currentUrl = "ziddihacks.com/"; // Prank/Showcase ke liye agar file mode mein ho
-                }
+                // Vercel domain ko auto pick karne ke liye code
+                let domain = window.location.origin + window.location.pathname;
                 
-                document.getElementById('shortUrlOutput').innerText = currentUrl + "?id=" + id;
+                // Agar mobile app (file:///) mein hai toh demo domain dikhaye
+                if(domain.includes("file:///")) {
+                    domain = "https://ziddi-link-shortner.vercel.app/";
+                }
+
+                const cleanLink = domain + "#" + id;
+                
+                document.getElementById('outputLink').innerText = cleanLink;
                 document.getElementById('result-panel').style.display = 'block';
-            } catch (e) { alert("Firebase Rules check karein!"); }
+                btn.innerText = "SUCCESS!";
+            } catch (e) { alert("Firebase Error!"); }
+            btn.disabled = false;
         }
 
         function copyLink() {
-            const link = document.getElementById('shortUrlOutput').innerText;
-            navigator.clipboard.writeText(link).then(() => alert("Copied!"));
+            const link = document.getElementById('outputLink').innerText;
+            navigator.clipboard.writeText(link).then(() => alert("Clean Link Copied!"));
         }
 
-        // Redirection Logic
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('id')) {
-            const id = params.get('id');
-            db.ref('links/' + id).once('value').then(snap => {
-                if (snap.exists()) window.location.replace(snap.val().original);
-            });
+        // REDIRECTION LOGIC (Hash Based)
+        function checkRedirect() {
+            const hash = window.location.hash.substring(1); 
+            if (hash) {
+                document.body.innerHTML = `<div style="background:#000;height:100vh;display:flex;justify-content:center;align-items:center;color:#00ff41;font-family:monospace;text-align:center;"><h2>ZIDDI HACKS<br>REDIRECTING...</h2></div>`;
+                
+                db.ref('links/' + hash).once('value').then(snap => {
+                    if (snap.exists()) {
+                        window.location.replace(snap.val().original);
+                    } else {
+                        alert("Invalid Link!");
+                        window.location.href = window.location.origin;
+                    }
+                });
+            }
         }
+
+        window.addEventListener('hashchange', checkRedirect);
+        checkRedirect();
     </script>
 </body>
 </html>
